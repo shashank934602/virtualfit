@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState, type ReactNode } from "react";
-import { brightMatrix, catById, colorIndex, garmentLook, lookStyle, tintMatrix, type BagLine } from "./vf-data";
+import { MODELS, brightMatrix, catById, colorIndex, garmentLook, lookStyle, personReady, tintMatrix, type BagLine } from "./vf-data";
 import { TintFilter } from "./vf-tint";
 
 export type PanelId = "bag" | "fit" | "profile" | null;
@@ -412,5 +412,36 @@ export function ProfilePanel({
         <strong>{rec}</strong>
       </div>
     </Shell>
+  );
+}
+
+/* ───────────────────────── Model switcher ───────────────────────── */
+
+export function ModelSwitcher({ model, setModel }: { model: string; setModel: (id: string) => void }) {
+  return (
+    <nav className="models glass" aria-label="Choose your model">
+      <span className="mcap" aria-hidden="true">
+        Model
+      </span>
+      {MODELS.map((p) => {
+        const ready = personReady(p);
+        const on = p.id === model;
+        return (
+          <button
+            key={p.id}
+            className={`mav${on ? " on" : ""}${ready ? "" : " soon"}`}
+            aria-pressed={on}
+            aria-disabled={!ready}
+            aria-label={ready ? `Show on ${p.name}` : `${p.name}: photos coming soon`}
+            title={ready ? `${p.name} · ${p.about}` : `${p.name}: photos coming soon`}
+            onClick={() => ready && setModel(p.id)}
+            style={p.avatar ? { backgroundImage: `url("${p.avatar}")` } : undefined}
+          >
+            {!p.avatar && <span className="ini">{p.name[0]}</span>}
+            <span className="mname">{ready ? p.name : "Soon"}</span>
+          </button>
+        );
+      })}
+    </nav>
   );
 }

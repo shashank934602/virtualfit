@@ -1,15 +1,15 @@
 "use client";
 
 import { memo, useCallback, useEffect, useRef, useState, type RefObject } from "react";
-import { CATEGORIES, catById, garmentLook, lookStyle, type AddPayload, type BagLine } from "./vf-data";
+import { CATEGORIES, DEFAULT_MODEL, catById, garmentLook, lookStyle, personById, personReady, type AddPayload, type BagLine } from "./vf-data";
 import { mount, type EngineApi } from "./vf-engine";
-import { BagPanel, FittingPanel, ProfilePanel, Rail, type Booking, type PanelId, type Profile } from "./vf-panels";
+import { BagPanel, FittingPanel, ModelSwitcher, ProfilePanel, Rail, type Booking, type PanelId, type Profile } from "./vf-panels";
 import { TintFilter } from "./vf-tint";
 
 /* ───────────────────────── Persistence ───────────────────────── */
 
 const KEY = "virtualfit.v1";
-type Saved = { bag: BagLine[]; booking: Booking; profile: Profile };
+type Saved = { bag: BagLine[]; booking: Booking; profile: Profile; model: string };
 const DEFAULT_PROFILE: Profile = { height: 178, fit: "Regular" };
 
 function load(): Partial<Saved> {
@@ -37,6 +37,7 @@ export default function VirtualFit() {
   const [bump, setBump] = useState(0);
   const [booking, setBooking] = useState<Booking>(null);
   const [profile, setProfile] = useState<Profile>(DEFAULT_PROFILE);
+  const [model, setModelState] = useState(DEFAULT_MODEL);
   const [toast, setToast] = useState<(AddPayload & { id: number }) | null>(null);
   const [toastOn, setToastOn] = useState(false);
 
@@ -55,13 +56,22 @@ export default function VirtualFit() {
     if (Array.isArray(s.bag)) setBag(s.bag.map((l) => ({ ...l, cat: l.cat ?? "tops" })));
     if (s.booking) setBooking(s.booking);
     if (s.profile) setProfile({ ...DEFAULT_PROFILE, ...s.profile });
+    if (s.model && personReady(personById(s.model))) {
+      setModelState(s.model);
+      apiRef.current?.setModel(s.model);
+    }
     setReady(true);
     /* eslint-enable react-hooks/set-state-in-effect */
   }, []);
 
   useEffect(() => {
-    if (ready) save({ bag, booking, profile });
-  }, [ready, bag, booking, profile]);
+    if (ready) save({ bag, booking, profile, model });
+  }, [ready, bag, booking, profile, model]);
+
+  const setModel = useCallback((id: string) => {
+    setModelState(id);
+    apiRef.current?.setModel(id);
+  }, []);
 
   // Esc closes the open panel.
   useEffect(() => {
@@ -93,6 +103,8 @@ export default function VirtualFit() {
       <Scene onAdd={onAdd} apiRef={apiRef} />
 
       <Rail panel={panel} setPanel={setPanel} count={count} bump={bump} booked={!!booking} />
+
+      <ModelSwitcher model={model} setModel={setModel} />
 
       <div className={`toast${toastOn ? " show" : ""}`} role="status" aria-live="polite" inert={!toastOn}>
         {toast && (

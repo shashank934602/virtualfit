@@ -1,4 +1,5 @@
 import ASSETS from "./vf-assets.json";
+import MODEL_ASSETS from "./vf-models.json";
 
 /* ───────────────────────── Types ───────────────────────── */
 
@@ -150,6 +151,59 @@ export function modelLook(cat: Category, it: Item): Look | null {
 }
 
 export const lookStyle = (l: Look) => ({ backgroundImage: l.image, backgroundSize: l.size, backgroundPosition: l.position });
+
+/* ───────────────────────── Models (people) ─────────────────────────
+   Leo is the original model (Tops sprite sheet + per-category fit photos).
+   The others come from assets-src/models/<id>/ via `npm run assets`:
+   a reference photo (their base look) plus fit photos per category. */
+
+export type Person = {
+  id: string;
+  name: string;
+  about: string;
+  /** face crop for the switcher */
+  avatar?: string;
+  /** the person in a plain white tee + charcoal trousers */
+  base?: string;
+  /** fits[categoryId][itemNumber 1..5] = try-on photo */
+  fits: Record<string, Record<string, string>>;
+};
+
+type ModelAssets = { avatar?: string; base?: string; fits?: Record<string, Record<string, string>> };
+const GEN_MODELS = MODEL_ASSETS as Record<string, ModelAssets>;
+
+export const DEFAULT_MODEL = "leo";
+
+export const MODELS: Person[] = [
+  { id: "leo", name: "Leo", about: "Short dark hair, trimmed beard, medium build" },
+  { id: "amara", name: "Amara", about: "Deep skin tone, curly hair, slim build" },
+  { id: "kenji", name: "Kenji", about: "East Asian, short black hair, broad build" },
+  { id: "ruby", name: "Ruby", about: "Fair skin, auburn hair, curvy build" },
+].map((m) => {
+  const a = GEN_MODELS[m.id] ?? {};
+  return { ...m, avatar: a.avatar, base: a.base, fits: a.fits ?? {} };
+});
+
+export const personById = (id: string) => MODELS.find((m) => m.id === id) ?? MODELS[0];
+/** A person can be selected once their reference photo exists (Leo always can). */
+export const personReady = (p: Person) => p.id === DEFAULT_MODEL || !!p.base;
+
+const fitLook = (src: string): Look => ({ image: url(src), size: "100% 100%", position: "50% 100%" });
+
+/** `person` wearing item `idx` of `cat`, or null if that photo doesn't exist. */
+export function personLook(personId: string, cat: Category, idx: number): Look | null {
+  if (personId === DEFAULT_MODEL) return modelLook(cat, cat.items[idx]);
+  const src = personById(personId).fits[cat.id]?.[String(idx + 1)];
+  return src ? fitLook(src) : null;
+}
+
+/** The person in their base outfit (shown when they have no photo for the current item). */
+export function personBaseLook(personId: string): Look {
+  const p = personById(personId);
+  if (p.id !== DEFAULT_MODEL && p.base) return fitLook(p.base);
+  const tops = CATEGORIES[0];
+  return modelLook(tops, tops.items[0])!; // Leo in the white tee
+}
 
 /* ───────────────────────── Recolouring ─────────────────────────
    The photographed garment is the item's first colour. Another colour is

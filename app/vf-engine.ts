@@ -1,8 +1,10 @@
 import {
   CATEGORIES,
+  DEFAULT_MODEL,
   brightMatrix,
   garmentLook,
-  modelLook,
+  personBaseLook,
+  personLook,
   tintMatrix,
   type AddPayload,
   type Category,
@@ -16,6 +18,8 @@ const mod = (n: number, m: number) => ((n % m) + m) % m;
 
 export type EngineApi = {
   destroy: () => void;
+  /** Show a different person; re-scans the current outfit onto them. */
+  setModel: (id: string) => void;
   /** Select a size chip on the buy card. Returns false if this category has no such size. */
   setSize: (s: string) => boolean;
 };
@@ -85,6 +89,7 @@ export function mount(root: HTMLElement, onAdd: (p: AddPayload) => void): Engine
   let fade = 1; // arc opacity multiplier used while switching category
   let swapTo: number | null = null; // category waiting to be swapped in
   let shown = -1; // item index currently tried on
+  let person = DEFAULT_MODEL; // who is wearing the clothes
   let buyKey = ""; // `${category}:${item}` shown on the buy card
   let buyIdx = 0;
   let buyK = 0; // selected colour index on the buy card
@@ -271,9 +276,22 @@ export function mount(root: HTMLElement, onAdd: (p: AddPayload) => void): Engine
   function tryOn(idx: number, k = 0) {
     shown = idx;
     updateBuy(idx);
-    const it = items()[idx];
-    const look = modelLook(cat(), it);
+    const look = personLook(person, cat(), idx);
     if (!look) return; // no try-on photo for this item (e.g. shoes): keep the current outfit
+    scanTo(look, items()[idx], k);
+  }
+
+  /** Switch person: their photo in the current item, else their base outfit. */
+  function setModel(id: string) {
+    if (id === person) return;
+    person = id;
+    if (shown < 0) return; // first try-on hasn't happened yet; it will use this person
+    const own = personLook(person, cat(), shown);
+    scanTo(own ?? personBaseLook(person), items()[shown], own ? buyK : 0);
+  }
+
+  /** Sweep the scan line down the model, revealing `look` (recoloured to colour k). */
+  function scanTo(look: Look, it: Item, k: number) {
     cancelAnims();
     paint(mNext, look);
     applyTint(mNext, "vf-tn", it, k);
@@ -586,6 +604,7 @@ export function mount(root: HTMLElement, onAdd: (p: AddPayload) => void): Engine
 
   return {
     setSize,
+    setModel,
     destroy() {
       ac.abort();
       cancelAnimationFrame(raf);

@@ -14,7 +14,7 @@
  *
  * Run:  npm run assets
  */
-import { readdir, mkdir, writeFile, stat } from "node:fs/promises";
+import { readdir, mkdir, writeFile, stat, rm } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import sharp from "sharp";
@@ -211,4 +211,86 @@ for (const cat of CATEGORIES) {
   }
 }
 await writeFile(MANIFEST, JSON.stringify(manifest, null, 2) + "\n");
-console.log(done ? `\n${done} image(s) ready. Wrote app/vf-assets.json` : "\nNo images found in assets-src/. See assets-src/README.md.");
+
+/* ── people: assets-src/models/<id>/reference.* and <category>/fit-N.* ── */
+const MODELS_SRC = path.join(SRC, "models");
+const MODELS_OUT = path.join(OUT, "models");
+const MODELS_MANIFEST = path.join(ROOT, "app", "vf-models.json");
+const ALL_CATS = ["tops", ...CATEGORIES];
+const models = {};
+const versioned = async (file, publicPath) => `${publicPath}?v=${Math.round((await stat(file)).mtimeMs).toString(36)}`;
+
+/** Square face crop from a processed fit/base image (head sits at the top, centred). */
+async function avatarFrom(fitFile, dest) {
+  const side = Math.round(FIT_W * 0.6);
+  await sharp(fitFile)
+    .extract({ left: Math.round((FIT_W - side) / 2), top: Math.round(FIT_H * 0.004), width: side, height: side })
+    .flatten({ background: "#ecebe8" })
+    .resize(192, 192)
+    .webp({ quality: 88 })
+    .toFile(dest);
+}
+
+let ids = [];
+try {
+  ids = (await readdir(MODELS_SRC, { withFileTypes: true })).filter((d) => d.isDirectory()).map((d) => d.name);
+} catch {
+  /* no models folder yet */
+}
+if (!ids.includes("leo")) ids.push("leo"); // Leo's avatar comes from assets-src/model-reference.png
+
+for (const id of ids) {
+  const dir = path.join(MODELS_SRC, id);
+  const out = path.join(MODELS_OUT, id);
+  const entry = {};
+  let files = [];
+  try {
+    files = (await readdir(dir)).filter((f) => EXT.test(f));
+  } catch {
+    /* empty */
+  }
+  const ref = files.find((f) => f.replace(EXT, "").toLowerCase() === "reference");
+  const refPath = ref ? path.join(dir, ref) : id === "leo" ? path.join(SRC, "model-reference.png") : null;
+  try {
+    if (refPath) {
+      await mkdir(out, { recursive: true });
+      const base = path.join(out, "base.webp");
+      await fit(refPath, base);
+      if (id !== "leo") entry.base = await versioned(base, `/vf/models/${id}/base.webp`);
+      const av = path.join(out, "avatar.webp");
+      await avatarFrom(base, av);
+      entry.avatar = await versioned(av, `/vf/models/${id}/avatar.webp`);
+      if (id === "leo") await rm(base); // Leo's outfits come from the Tops sprite
+      done++;
+      console.log(`✓ models/${id}/${ref ?? "../model-reference.png"} → avatar${id === "leo" ? "" : " + base"}`);
+    }
+  } catch (e) {
+    console.error(`✗ models/${id} reference: ${e.message}`);
+  }
+  for (const cat of ALL_CATS) {
+    let catFiles = [];
+    try {
+      catFiles = (await readdir(path.join(dir, cat))).filter((f) => EXT.test(f));
+    } catch {
+      continue;
+    }
+    for (let n = 1; n <= 5; n++) {
+      const src = catFiles.find((f) => f.replace(EXT, "").toLowerCase() === `fit-${n}`);
+      if (!src) continue;
+      try {
+        await mkdir(path.join(out, cat), { recursive: true });
+        const dest = path.join(out, cat, `fit-${n}.webp`);
+        await fit(path.join(dir, cat, src), dest);
+        ((entry.fits ??= {})[cat] ??= {})[String(n)] = await versioned(dest, `/vf/models/${id}/${cat}/fit-${n}.webp`);
+        done++;
+        console.log(`✓ models/${id}/${cat}/${src}`);
+      } catch (e) {
+        console.error(`✗ models/${id}/${cat}/${src}: ${e.message}`);
+      }
+    }
+  }
+  if (Object.keys(entry).length) models[id] = entry;
+}
+await writeFile(MODELS_MANIFEST, JSON.stringify(models, null, 2) + "\n");
+
+console.log(done ? `\n${done} image(s) ready. Wrote app/vf-assets.json and app/vf-models.json` : "\nNo images found in assets-src/. See assets-src/README.md.");

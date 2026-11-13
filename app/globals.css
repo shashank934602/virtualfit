@@ -386,6 +386,58 @@ button {
 .buy .sw:active { transform: scale(.9); }
 .buy .sw.on { box-shadow: 0 0 0 2px rgba(255, 255, 255, .95), 0 0 0 4px rgba(0, 0, 0, .12); }
 
+/* ── Model (person) switcher ── */
+.models {
+  position: fixed;
+  right: max(18px, 1.8vw);
+  top: 4.2vh;
+  z-index: 30;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 6px;
+  border-radius: 999px;
+}
+.models .mcap {
+  font: 700 8.5px / 1 var(--sans);
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: rgba(30, 30, 32, .62);
+  padding: 2px 0 1px;
+}
+.models .mav {
+  position: relative;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, .55) center 18% / cover no-repeat;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, .6);
+  transition: box-shadow .35s var(--ease), transform .25s var(--ease), opacity .3s var(--ease);
+}
+.models .mav:active { transform: scale(.92); }
+.models .mav.on { box-shadow: 0 0 0 2px #fff, 0 0 0 4px rgba(0, 0, 0, .14); }
+.models .mav.soon { opacity: .5; filter: grayscale(1); }
+.models .ini { font: 600 15px var(--sans); color: rgba(30, 30, 32, .7); }
+.models .mname {
+  position: absolute;
+  right: calc(100% + 12px);
+  top: 50%;
+  transform: translate(6px, -50%);
+  padding: 5px 10px;
+  border-radius: 999px;
+  background: rgba(252, 250, 247, .9);
+  color: #1d1d1f;
+  font: 600 12px var(--sans);
+  white-space: nowrap;
+  box-shadow: 0 6px 16px -8px rgba(0, 0, 0, .35);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .25s var(--ease), transform .35s var(--ease);
+}
+.models .mav:hover .mname,
+.models .mav:focus-visible .mname { opacity: 1; transform: translate(0, -50%); }
+
 /* ── SVG filter defs (never painted) ── */
 svg.defs { position: absolute; width: 0; height: 0; overflow: hidden; pointer-events: none; }
 
@@ -695,7 +747,7 @@ svg.defs { position: absolute; width: 0; height: 0; overflow: hidden; pointer-ev
   .rail {
     left: 10px;
     top: auto;
-    bottom: calc(4.6vh + 150px);
+    bottom: calc(4.6vh + 168px);
     transform: none;
     gap: 6px;
     padding: 6px;
@@ -716,9 +768,9 @@ svg.defs { position: absolute; width: 0; height: 0; overflow: hidden; pointer-ev
     left: 56px;
     right: 10px;
     top: auto;
-    bottom: calc(4.6vh + 150px);
+    bottom: calc(4.6vh + 168px);
     width: auto;
-    max-height: calc(100vh - 4.6vh - 150px - 90px);
+    max-height: calc(100vh - 4.6vh - 168px - 90px);
     padding: 16px;
     transform: translateY(12px) scale(.98);
     transform-origin: left bottom;
@@ -726,6 +778,10 @@ svg.defs { position: absolute; width: 0; height: 0; overflow: hidden; pointer-ev
   .panel.open { transform: none; }
   .days { gap: 4px; }
 
-  .toast { left: 56px; right: 10px; max-width: none; bottom: calc(4.6vh + 162px); transform: translateY(14px) scale(.96); }
+  .models { right: 10px; top: auto; bottom: calc(4.6vh + 168px); gap: 6px; padding: 6px 5px; }
+  .models .mav { width: 34px; height: 34px; }
+  .models .mname { display: none; }
+
+  .toast { left: 56px; right: 56px; max-width: none; bottom: calc(4.6vh + 178px); transform: translateY(14px) scale(.96); }
   .toast.show { transform: none; }
 }
